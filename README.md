@@ -19,7 +19,7 @@ Apply each SQL migration in `drizzle/` in order, once per local database, includ
 ## Features
 
 - Minimal responsive PR board with editable goal labels, thin progress bars, and light/dark themes.
-- A top-left navigation menu contains My records, Friends and Profile. The homepage toggle switches between grid and row layouts and remembers the choice on this device. New activities remain available in the orange + log flow.
+- A top-right navigation menu contains My records, Friends and Profile. The homepage uses a single icon to switch between grid and row layouts and remembers the choice on this device. New activities remain available in the orange + log flow.
 - Profile photos have a local square preview before saving. JPG, PNG and WebP inputs up to 10 MB are resized to 512px JPEGs; R2 holds the photo and D1 records ownership. Photos are readable only by the owner and accepted friends, and can be replaced or removed from Profile.
 - Quick logging with activity, value, and date; custom activity creation with unit and record direction.
 - Editable goals, progress graphs, a 26-week logging heatmap, and chronological log deltas.

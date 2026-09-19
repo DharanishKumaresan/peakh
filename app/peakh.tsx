@@ -182,19 +182,19 @@ export default function Peakh() {
   const modalTitle = modal === 'create' ? 'New activity.' : modal === 'goal' ? 'Set your target.' : modal === 'friend' ? 'Add a friend.' : modal === 'profile' ? 'Your profile.' : modal === 'reset' ? 'Start fresh?' : modal === 'remove' ? 'Remove friend?' : 'Log an effort.';
   return <div className="app">
     {loading && <div className="loading-line" />}
-    <header className="header"><div className="header-left">
-      {auth && <DropdownMenu><DropdownMenuTrigger asChild><button className="menu-trigger" aria-label="Open navigation"><Menu size={21} />{social?.requests.some(r => r.incoming) && <span className="request-dot" aria-label="Pending friend requests" />}</button></DropdownMenuTrigger><DropdownMenuContent className="peakh-menu" align="start" sideOffset={14}>
+    <header className="header"><a href="#" className="logo" aria-label="peakh home">peakh<span className="logo-mark" /></a>
+      <div className="header-right"><button className="theme-button" aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} onClick={toggleTheme}>{theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}</button>
+      {auth && <DropdownMenu><DropdownMenuTrigger asChild><button className="menu-trigger" aria-label="Open navigation"><Menu size={21} />{social?.requests.some(r => r.incoming) && <span className="request-dot" aria-label="Pending friend requests" />}</button></DropdownMenuTrigger><DropdownMenuContent className="peakh-menu" align="end" sideOffset={14}>
         <DropdownMenuItem className={!isFriends ? 'current' : ''} onSelect={() => navigate('')}><Grid2X2 />My records</DropdownMenuItem>
         <DropdownMenuItem className={isFriends ? 'current' : ''} onSelect={() => navigate('friends')}><Users />Friends{social?.requests.some(r => r.incoming) && <span className="request-dot" />}</DropdownMenuItem>
         <DropdownMenuItem onSelect={() => open('profile')}><UserRound />Profile</DropdownMenuItem>
       </DropdownMenuContent></DropdownMenu>}
-      <a href="#" className="logo" aria-label="peakh home">peakh<span className="logo-mark" /></a></div>
-      <div className="header-right"><button className="theme-button" aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} onClick={toggleTheme}>{theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}</button>{auth && <button className="profile-button avatar-button" aria-label="Your profile" onClick={() => open('profile')}><Avatar name={social?.self.name || 'Me'} src={social?.self.photoUrl} /></button>}</div>
+      </div>
     </header>
     <main className="main">
       {loadError && <div role="alert" className="status-message error-message">{loadError}<button onClick={() => loadRecords(true)}>Retry</button></div>}
       {loading ? <div className="empty">Loading your records…</div> : !auth ? <section className="signin-panel"><p className="mono muted">Your performance, on record.</p><h1 className="num">Make your<br />mark<span className="orange">.</span></h1><p>Track your best. See your friends’ progress.</p><a className="action-button" href={signin}>Sign in with ChatGPT <ArrowRight /></a></section> : <>
-        {!isFriends && !active && <><section className="intro records-intro"><h1>Personal records<span className="orange">.</span></h1><button className="layout-toggle" role="switch" aria-checked={arrangement === 'rows'} aria-label="Row layout" title={arrangement === 'grid' ? 'Switch to rows' : 'Switch to grid'} onClick={toggleArrangement}><Grid2X2 className={arrangement === 'grid' ? 'active' : ''} size={17} /><Rows3 className={arrangement === 'rows' ? 'active' : ''} size={17} /></button></section>
+        {!isFriends && !active && <><section className="intro records-intro"><h1>Personal records<span className="orange">.</span></h1><button className="layout-toggle" aria-label={arrangement === 'grid' ? 'Switch to rows' : 'Switch to grid'} title={arrangement === 'grid' ? 'Switch to rows' : 'Switch to grid'} onClick={toggleArrangement}>{arrangement === 'grid' ? <Rows3 size={19} /> : <Grid2X2 size={19} />}</button></section>
           <div className={`record-grid simple-grid ${arrangement === 'rows' ? 'record-rows' : ''}`}>{activities.map(a => <article key={a.id} className="record-card simple-card">
             <button className="record-main" onClick={() => navigate('activity/' + a.id)} aria-label={`${a.name}: ${a.entries.length ? fmt(best(a), a.unit) + ' ' + a.unit : 'No record yet'}`}><div className="card-top"><h3>{a.name}</h3><ArrowUpRight /></div><div className="card-value"><span className="num">{a.entries.length ? fmt(best(a), a.unit) : '—'}</span><span className="unit mono">{a.unit}</span></div></button>
             <button className="card-goal" onClick={() => open('goal', a.id)} aria-label={`${a.goal ? 'Edit' : 'Set'} ${a.name} goal`}>
