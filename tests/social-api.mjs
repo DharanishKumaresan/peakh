@@ -1,0 +1,61 @@
+import assert from 'node:assert/strict';
+// Run only against a local built worker: production identity is supplied by the Sites proxy.
+const base = process.env.TEST_BASE_URL || 'http://127.0.0.1:5180';
+assert.ok(['localhost','127.0.0.1'].includes(new URL(base).hostname), 'Use an isolated local worker');
+const suffix = crypto.randomUUID();
+const alice = 'test-alice-' + suffix, bob = 'test-bob-' + suffix, stranger = 'test-stranger-' + suffix;
+async function call(user, path, method = 'GET', body, headers = {}) {
+ const r = await fetch(base + path, {method, headers:{...(user?{'oai-authenticated-user-id':user}:{}),'Content-Type':'application/json','Connection':'close',...headers}, ...(body?{body:JSON.stringify(body)}:{})});
+ const raw = await r.text();
+ assert.ok(r.headers.get('content-type')?.includes('json'), `${method} ${path}: ${r.status} ${raw}`);
+ const data = JSON.parse(raw); return {status:r.status,data,etag:r.headers.get('etag')};
+}
+async function log(user, activity, value, id=crypto.randomUUID()) {
+ const board=await call(user,'/api/records'); assert.equal(board.status,200);
+ board.data.activities.find(a=>a.id===activity).entries.push({id,date:'2026-09-01',value});
+ const saved=await call(user,'/api/records','PUT',board.data,{'If-Match':board.etag}); assert.equal(saved.status,200,JSON.stringify(saved.data));
+ return board;
+}
+assert.equal((await call(null,'/api/records')).status,401);
+assert.equal((await call(null,'/api/social')).status,401);
+const a=(await call(alice,'/api/social')).data, b=(await call(bob,'/api/social')).data;
+assert.ok(a.self.code && b.self.code && a.self.code!==b.self.code);
+assert.ok(!JSON.stringify(a).includes(alice));
+assert.equal((await call(alice,'/api/friends/'+b.self.id)).status,404);
+assert.equal((await call(alice,'/api/social','POST',{code:a.self.code})).status,400);
+assert.equal((await call(alice,'/api/social','POST',{code:'BAD'})).status,400);
+assert.equal((await call(alice,'/api/social','POST',{code:b.self.code})).status,201);
+assert.equal((await call(alice,'/api/social','POST',{code:b.self.code})).status,409);
+const request=(await call(bob,'/api/social')).data.requests[0];assert.equal(request.incoming,true);
+assert.equal((await call(alice,'/api/social','PATCH',{action:'accept',id:request.id})).status,404);
+assert.equal((await call(stranger,'/api/social','PATCH',{action:'accept',id:request.id})).status,404);
+assert.equal((await call(alice,'/api/friends/'+b.self.id)).status,404);
+assert.equal((await call(bob,'/api/social','PATCH',{action:'accept',id:request.id})).status,200);
+assert.equal((await call(alice,'/api/friends/'+b.self.id)).status,200);
+await log(bob,'run',1300);await log(bob,'run',1200);await log(bob,'run',1400);
+await log(bob,'bench',80);await log(bob,'bench',95);await log(bob,'bench',90);
+await log(bob,'bench',200,'sample-hidden');
+const peer=(await call(alice,'/api/social')).data.friends[0];
+assert.deepEqual(peer.records.map(r=>r.value).sort((x,y)=>x-y),[95,1200]);
+const profile=(await call(alice,'/api/friends/'+b.self.id)).data;
+assert.equal(profile.activities.find(a=>a.id==='bench').entries.length,3);
+assert.equal((await call(stranger,'/api/friends/'+b.self.id)).status,404);
+const before=await call(alice,'/api/records');assert.equal(before.data.activities[0].entries.length,0);
+assert.equal(before.data.sample,false);
+before.data.activities[1].goal=110;
+assert.equal((await call(alice,'/api/records','PUT',before.data,{'If-Match':before.etag})).status,200);
+assert.equal((await call(alice,'/api/records','PUT',before.data,{'If-Match':before.etag})).status,409);
+const updated=await call(alice,'/api/records');assert.equal(updated.data.activities[1].goal,110);
+updated.data.activities[0].entries.push({id:crypto.randomUUID(),date:'2026-02-30',value:100});
+assert.equal((await call(alice,'/api/records','PUT',updated.data,{'If-Match':updated.etag})).status,400);
+assert.equal((await call(alice,'/api/social','PATCH',{action:'rename',name:'Alice Test'})).status,200);
+assert.equal((await call(bob,'/api/social')).data.friends[0].name,'Alice Test');
+assert.equal((await call(alice,'/api/social','PATCH',{action:'remove',id:b.self.id})).status,200);
+assert.equal((await call(alice,'/api/friends/'+b.self.id)).status,404);
+assert.equal((await call(bob,'/api/social')).data.friends.length,0);
+assert.equal((await call(bob,'/api/social','POST',{code:a.self.code})).status,201);
+const pending=(await call(alice,'/api/social')).data.requests[0];
+assert.equal((await call(alice,'/api/social','PATCH',{action:'dismiss',id:pending.id})).status,200);
+assert.equal((await call(bob,'/api/social')).data.requests.length,0);
+assert.equal((await call(alice,'/api/social','POST',{code:b.self.code},{Origin:'https://evil.example'})).status,403);
+console.log('PASS: account isolation, friend requests, consent, profile authorization, live PR summaries, goal persistence, invalid dates, stale-save protection and revocation.');

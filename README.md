@@ -14,28 +14,30 @@ node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1
 npm run dev
 ```
 
-Apply the migration once per new local database. The preview runs at http://localhost:5173. On this Windows host, if the npm shim fails, invoke `node "C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js"` in place of `npm`.
+Apply each SQL migration in `drizzle/` in order, once per local database, including `0001_classy_power_man.sql`. The preview runs at http://localhost:5173. Its sign-in uses a local test account. On this Windows host, if the npm shim fails, invoke `node "C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js"` in place of `npm`.
 
 ## Features
 
-- Responsive record board with strength/endurance filters and light/dark themes.
+- Minimal responsive PR board with editable goal labels, thin progress bars, and light/dark themes.
 - Quick logging with activity, value, and date; custom activity creation with unit and record direction.
 - Editable goals, progress graphs, a 26-week logging heatmap, and chronological log deltas.
 - Lower-is-better timing records and higher-is-better strength records.
-- Friends leaderboard with manually entered friend records. This is not a live social network; there are no invitations or automatic friend syncing.
+- Real account-based friend requests via private friend codes and invite links. Acceptance enables mutual access to profiles, progress charts, goals and activity history. Removing a friend revokes access.
+- Leaderboards derive from saved real logs, refresh immediately after your saves, and poll every 10 seconds while Friends is visible. Matching requires the same activity, event, units and scoring direction. Equal PRs share a rank.
 - Example data is clearly labeled. Start fresh removes only example logs and friends.
-- Records persist in D1. Hosted identity uses the Sites authenticated user; local anonymous sessions use a secure opaque HttpOnly cookie. Clearing this cookie creates a new anonymous board. Theme preference alone uses localStorage.
-- Server validation, board isolation, origin checks, and recoverable save errors.
+- Records persist in D1 under the authenticated Sites identity. New accounts start empty. Existing anonymous records migrate into a new account when its original browser cookie is present. Sample logs are excluded from shared profiles and rankings. Theme preference alone uses localStorage.
+- Server validation, board isolation, origin checks, friend-only reads, and versioned saves that prevent overwriting newer records from another device.
 
 ## Verification
 
 ```sh
 node --test tests/records.test.mjs
+node --test tests/social.test.mjs
 node tests/api-smoke.mjs
 npx tsc --noEmit
 npm run build
 ```
 
-The API smoke check requires the local preview and an initialized database. It uses isolated temporary test boards and restores its test records. Tests cover PR direction, time parsing, same-day ordering, persistence, invalid values/dates, separate boards, and cross-origin writes.
+The API smoke check requires a built local worker at 127.0.0.1:5180 and initialized tables. Start with `npm run start -- --port 5180`. It creates uniquely named test accounts in the local database and refuses remote targets. Tests exercise consent, profile authorization, real PR updates, goal persistence, invalid dates, stale saves and access revocation. The dev preview strips identity headers; the built local worker is used to simulate separate identities that the Sites proxy supplies in production. A Wrangler preview proxy bug can interrupt the request following a rejected cross-origin POST, so that check runs last.
 
 Source: `app/peakh.tsx` (UI), `app/globals.css` (design), `app/records.ts` (record logic), `app/api/records/route.ts` (storage), and `db/schema.ts` (schema).

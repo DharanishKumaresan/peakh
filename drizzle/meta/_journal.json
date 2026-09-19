@@ -8,6 +8,13 @@
       "when": 1789622051903,
       "tag": "0000_smart_white_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789741701088,
+      "tag": "0001_classy_power_man",
+      "breakpoints": true
     }
   ]
 }

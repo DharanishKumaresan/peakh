@@ -1,16 +1,42 @@
-import { env } from 'cloudflare:workers';
 import { z } from 'zod';
-import { makeSeed, today } from '../../records';
+import { today } from '../../records';
+import { database, ensureBoard, json, sameOrigin, userId } from '../storage';
 
 const value = z.number().finite().positive().max(1000000);
-const validDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(s=>s<=today()&&new Date(s+'T12:00:00Z').toISOString().slice(0,10)===s);
+const validDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(s => {
+  const d = new Date(s + 'T12:00:00Z');
+  return s <= today() && !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+});
 const schema = z.object({
- sample:z.boolean(),
- activities:z.array(z.object({id:z.string().min(1).max(100),name:z.string().trim().min(1).max(45),category:z.string().max(100),unit:z.enum(['reps','kg','lb','min:sec','sec','km','m']),lower:z.boolean(),goal:z.number().finite().min(0).max(1000000),entries:z.array(z.object({id:z.string().min(1).max(100),date:validDate,value})).max(10000)})).min(1).max(100),
- friends:z.array(z.object({id:z.string().min(1).max(100),name:z.string().trim().min(1).max(50),records:z.record(value)})).max(100),
-}).refine(s=>new Set(s.activities.map(a=>a.id)).size===s.activities.length,'Activity identifiers must be unique');
-function identity(request:Request){const user=request.headers.get('oai-authenticated-user-id');if(user)return {owner:'user:'+user,cookie:null};const existing=request.headers.get('cookie')?.match(/(?:^|;\s*)peakh_board=([a-f0-9-]{36})(?:;|$)/)?.[1];const token=existing||crypto.randomUUID();return {owner:'browser:'+token,cookie:existing?null:`peakh_board=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000${new URL(request.url).protocol==='https:'?'; Secure':''}`}}
-function response(body:unknown,status:number,cookie:string|null=null){const headers=new Headers({'Cache-Control':'no-store'});if(cookie)headers.set('Set-Cookie',cookie);return Response.json(body,{status,headers})}
-function db(){if(!env.DB)throw Error('Database unavailable');return env.DB}
-export async function GET(request:Request){const {owner,cookie}=identity(request);try{const database=db();const row=await database.prepare('SELECT state FROM record_boards WHERE owner = ?').bind(owner).first<{state:string}>();if(row)return response(JSON.parse(row.state),200,cookie);const seed=makeSeed();await database.prepare('INSERT OR IGNORE INTO record_boards (owner, state, updated_at) VALUES (?, ?, ?)').bind(owner,JSON.stringify(seed),new Date().toISOString()).run();const saved=await database.prepare('SELECT state FROM record_boards WHERE owner = ?').bind(owner).first<{state:string}>();return response(saved?JSON.parse(saved.state):seed,200,cookie)}catch(e){console.error('Record load failed',e);return response({error:'Records are temporarily unavailable. Please try again.'},503)}}
-export async function PUT(request:Request){const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return response({error:'Request origin is not allowed.'},403);const {owner,cookie}=identity(request);try{const raw=await request.text();if(raw.length>2000000)return response({error:'Record limit reached.'},413);let parsed;try{parsed=schema.safeParse(JSON.parse(raw))}catch{return response({error:'Please check the record values and dates.'},400)}if(!parsed.success)return response({error:'Please check the record values and dates.'},400);await db().prepare('INSERT INTO record_boards (owner, state, updated_at) VALUES (?, ?, ?) ON CONFLICT(owner) DO UPDATE SET state=excluded.state, updated_at=excluded.updated_at').bind(owner,JSON.stringify(parsed.data),new Date().toISOString()).run();return response({saved:true},200,cookie)}catch(e){console.error('Record save failed',e);return response({error:'Could not save your record. Your input is still here; please try again.'},503)}}
+  sample: z.boolean(),
+  activities: z.array(z.object({ id: z.string().min(1).max(100), name: z.string().trim().min(1).max(45), category: z.string().max(100), unit: z.enum(['reps','kg','lb','min:sec','sec','km','m']), lower: z.boolean(), goal: z.number().finite().min(0).max(1000000), entries: z.array(z.object({ id: z.string().min(1).max(100), date: validDate, value })).max(10000).refine(entries => new Set(entries.map(e => e.id)).size === entries.length) })).min(1).max(100),
+  friends: z.array(z.unknown()).max(100),
+}).refine(s => new Set(s.activities.map(a => a.id)).size === s.activities.length);
+
+export async function GET(request: Request) {
+  const user = userId(request);
+  if (!user) return json({ error: 'Sign in to save and share your records.' }, 401);
+  try {
+    const row = await ensureBoard(request, user);
+    return json(JSON.parse(row.state), 200, { ETag: row.updated_at });
+  } catch (e) { console.error('Record load failed', e); return json({ error: 'Records are temporarily unavailable. Please try again.' }, 503); }
+}
+export async function PUT(request: Request) {
+  const user = userId(request);
+  if (!user) return json({ error: 'Please sign in again.' }, 401);
+  if (!sameOrigin(request)) return json({ error: 'Request origin is not allowed.' }, 403);
+  try {
+    const raw = await request.text();
+    if (raw.length > 2000000) return json({ error: 'Record limit reached.' }, 413);
+    let parsed;
+    try { parsed = schema.safeParse(JSON.parse(raw)); } catch { return json({ error: 'Please check your values and dates.' }, 400); }
+    if (!parsed.success) return json({ error: 'Please check your values and dates.' }, 400);
+    const expected = request.headers.get('if-match');
+    if (!expected) return json({ error: 'Reload your records before saving.' }, 428);
+    const version = crypto.randomUUID();
+    const result = await database().prepare('UPDATE record_boards SET state = ?, updated_at = ? WHERE owner = ? AND updated_at = ?')
+      .bind(JSON.stringify({ ...parsed.data, friends: [] }), version, 'user:' + user, expected).run();
+    if (!result.meta.changes) return json({ error: 'Your records changed on another device. We refreshed them; submit again to save this entry.' }, 409);
+    return json({ saved: true }, 200, { ETag: version });
+  } catch (e) { console.error('Record save failed', e); return json({ error: 'Could not save. Your input is still here; please try again.' }, 503); }
+}

@@ -7,6 +7,11 @@ export const dayAgo = (days: number) => { const d = new Date(); d.setDate(d.getD
 // Stable sort preserves logging order for multiple efforts on the same date.
 export const byDate = (a: Entry,b: Entry) => a.date.localeCompare(b.date);
 export function best(a: Activity) { return a.entries.length ? (a.lower ? Math.min : Math.max)(...a.entries.map(e=>e.value)) : 0; }
+export function goalProgress(a: Activity) {
+ const pr = best(a);
+ if (!a.goal || !pr) return 0;
+ return Math.max(0, Math.min(100, (a.lower ? a.goal / pr : pr / a.goal) * 100));
+}
 export function formatValue(n: number, unit: string) { if(unit === 'min:sec') return `${Math.floor(n/60)}:${String(Math.round(n%60)).padStart(2,'0')}`; return Number(n.toFixed(2)).toString(); }
 export function parseValue(s: string, unit: string) { if(unit === 'min:sec') { if(!/^\d+:([0-5]\d)$/.test(s)) return NaN; const [m,sec]=s.split(':').map(Number);return m*60+sec; } return Number(s); }
 export function shortDate(s: string) { return new Date(s+'T12:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short'}); }
