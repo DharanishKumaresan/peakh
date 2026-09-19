@@ -1,18 +1,18 @@
 import { z } from 'zod';
 import { publicRecords } from '../../social';
-import { database, ensureProfile, json, sameOrigin, userId, type ProfileRow } from '../storage';
+import { database, ensureProfile, json, sameOrigin, userId, photoUrl, type ProfileRow } from '../storage';
 
 export async function GET(request: Request) {
   const user = userId(request);
   if (!user) return json({ error: 'Please sign in.' }, 401);
   try {
     const db = database(), self = await ensureProfile(request, user);
-    const result = await db.prepare(`SELECT f.id AS connection_id, f.requested_by, f.status, p.id, p.name, b.state
+    const result = await db.prepare(`SELECT f.id AS connection_id, f.requested_by, f.status, p.id, p.name, p.photo_key, b.state
       FROM friendships f JOIN profiles p ON p.user_id = CASE WHEN f.user_a = ? THEN f.user_b ELSE f.user_a END
       LEFT JOIN record_boards b ON b.owner = 'user:' || p.user_id
-      WHERE f.user_a = ? OR f.user_b = ? ORDER BY f.created_at DESC`).bind(user, user, user).all<{ connection_id: string; requested_by: string; status: string; id: string; name: string; state: string | null }>();
-    return json({ self: { id: self.id, name: self.name, code: self.code },
-      friends: result.results.filter(r => r.status === 'accepted').map(r => ({ id: r.id, name: r.name, records: r.state ? publicRecords(JSON.parse(r.state)) : [] })),
+      WHERE f.user_a = ? OR f.user_b = ? ORDER BY f.created_at DESC`).bind(user, user, user).all<{ connection_id: string; requested_by: string; status: string; id: string; name: string; photo_key: string | null; state: string | null }>();
+    return json({ self: { id: self.id, name: self.name, code: self.code, photoUrl: photoUrl(self.id, self.photo_key) },
+      friends: result.results.filter(r => r.status === 'accepted').map(r => ({ id: r.id, name: r.name, photoUrl: photoUrl(r.id, r.photo_key), records: r.state ? publicRecords(JSON.parse(r.state)) : [] })),
       requests: result.results.filter(r => r.status === 'pending').map(r => ({ id: r.connection_id, person: { id: r.id, name: r.name }, incoming: r.requested_by !== user })),
     });
   } catch (e) { console.error('Friend load failed', e); return json({ error: 'Could not refresh friends. Please try again.' }, 503); }

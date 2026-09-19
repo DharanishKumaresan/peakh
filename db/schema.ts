@@ -12,6 +12,7 @@ export const profiles = sqliteTable('profiles', {
   id: text('id').notNull().unique(),
   name: text('name').notNull(),
   code: text('code').notNull().unique(),
+  photoKey: text('photo_key'),
   createdAt: text('created_at').notNull(),
 });
 export const friendships = sqliteTable('friendships', {

@@ -15,6 +15,13 @@
       "when": 1789741701088,
       "tag": "0001_classy_power_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789825814388,
+      "tag": "0002_tiny_scrambler",
+      "breakpoints": true
     }
   ]
 }
