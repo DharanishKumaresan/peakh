@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peakh — Friends</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f8f8f8; color: #222; font-family: Arial, Helvetica, sans-serif; }
+    .page { position: relative; width: 504px; height: 720px; overflow: hidden; background: #fafafa; padding: 8px 29px; }
+    h1 { margin: 0; font-size: 31px; line-height: 1.1; letter-spacing: -1.8px; font-weight: 600; }
+    h1 span { color: #ed512e; }
+    .add { display: inline-flex; align-items: center; gap: 11px; margin-top: 24px; height: 46px; padding: 0 20px; background: #ed512e; color: white; border-radius: 15px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(237,81,46,.12); }
+    .add b { font-size: 23px; font-weight: 300; line-height: 1; }
+    .tabs { display: flex; align-items: center; margin-top: 26px; height: 48px; border: 1px solid #e4e5e7; border-radius: 15px; background: #f3f4f5; padding: 4px; }
+    .tabs div { width: 33.333%; height: 39px; display: flex; align-items: center; justify-content: center; color: #707173; font-size: 12px; }
+    .tabs .selected { color: #252525; background: white; border-radius: 11px; box-shadow: 0 2px 6px rgba(0,0,0,.09); }
+    .updated { margin-top: 18px; color: #666; font-family: Consolas, 'Courier New', monospace; font-size: 8px; letter-spacing: .7px; }
+    .chips { display: flex; gap: 10px; margin-top: 25px; }
+    .chip { display: flex; align-items: center; justify-content: center; height: 42px; padding: 0 14px; background: white; border: 1px solid #e7e7e8; border-radius: 13px; font-size: 11px; }
+    .chip.selected { color: #fff; background: #222; border-color: #222; }
+    .label { display: flex; align-items: center; justify-content: space-between; margin-top: 34px; font-family: Consolas, 'Courier New', monospace; color: #3e3e3e; font-size: 10px; letter-spacing: .25px; }
+    .label small { color: #777; font-size: 9px; letter-spacing: .1px; }
+    .card { display: flex; align-items: center; height: 88px; margin-top: 28px; padding: 0 14px; border: 1px solid #e3e3e5; border-radius: 18px; background: white; box-shadow: 0 7px 18px rgba(0,0,0,.035); }
+    .card + .card { margin-top: 13px; }
+    .rank { width: 37px; font-size: 28px; letter-spacing: -1.5px; font-weight: 750; }
+    .rank.first { color: #e64d2c; }
+    .avatar { width: 33px; height: 33px; display: flex; align-items: center; justify-content: center; border: 1px solid #e3e3e3; border-radius: 50%; color: #777; font-family: Consolas, 'Courier New', monospace; font-size: 10px; }
+    .name { margin-left: 9px; font-size: 13px; }
+    .you { color: #777; font-family: Consolas, 'Courier New', monospace; font-size: 9px; }
+    .score { margin-left: auto; text-align: right; }
+    .score strong { display: block; font-size: 39px; line-height: .95; letter-spacing: -2px; font-weight: 750; }
+    .score small { display: block; margin-top: 6px; font-family: Consolas, 'Courier New', monospace; color: #666; font-size: 10px; }
+    .note { margin-top: 25px; color: #747474; font-size: 12px; }
+    .footer { margin-top: 25px; border-top: 1px solid #e3e3e3; padding-top: 22px; color: #777; font-family: Consolas, 'Courier New', monospace; font-size: 9px; letter-spacing: 1px; }
+    .fab { position: absolute; right: 34px; bottom: 19px; display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 17px; color: white; background: #ed512e; font-size: 36px; font-weight: 200; box-shadow: 0 9px 20px rgba(237,81,46,.22); }
+  </style>
+</head>
+<body>
+  <main class="page" data-document-role="page" data-label="Peakh Friends leaderboard">
+    <h1>Friends<span>.</span></h1>
+    <div class="add"><b>+</b> Add friend</div>
+    <div class="tabs"><div class="selected">Leaderboard</div><div>Friends</div><div>Requests</div></div>
+    <div class="updated">UPDATED 12:16 PM · EVERY 10S</div>
+    <div class="chips"><div class="chip selected">Pushups</div><div class="chip">Cycling</div><div class="chip">Skipping</div></div>
+    <div class="label"><span>PUSHUPS</span><small>BODYWEIGHT · UNBROKEN</small></div>
+    <div class="card"><div class="rank first">01</div><div class="avatar">D</div><div class="name">dhrnix <span class="you">YOU</span></div><div class="score"><strong>25</strong><small>reps</small></div></div>
+    <div class="card"><div class="rank">02</div><div class="avatar">S</div><div class="name">sujn</div><div class="score"><strong>10</strong><small>reps</small></div></div>
+    <div class="note">Rankings use real logged records for the same activity and measurement.</div>
+    <div class="footer">PEAKH / BUILT ON EFFORT.</div>
+    <div class="fab">+</div>
+  </main>
+</body>
+</html>

@@ -2,6 +2,9 @@ export type Entry = { id: string; date: string; value: number };
 export type Activity = { id: string; name: string; category: string; unit: string; lower: boolean; goal: number; entries: Entry[] };
 export type Friend = { id: string; name: string; records: Record<string, number> };
 export type RecordState = { activities: Activity[]; friends: Friend[]; sample: boolean };
+export function deleteRecord(state: RecordState, activityId: string, entryId: string): RecordState {
+ return { ...state, activities: state.activities.map(a => a.id === activityId ? { ...a, entries: a.entries.filter(e => e.id !== entryId) } : a) };
+}
 export const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 export const dayAgo = (days: number) => { const d = new Date(); d.setDate(d.getDate()-days); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 // Stable sort preserves logging order for multiple efforts on the same date.

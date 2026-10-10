@@ -1,0 +1,13 @@
+.wrangler
+.sites-runtime
+.openai
+vite.config.ts
+.git
+.next
+.vinext
+dist
+node_modules
+.env*
+peakh-standalone.html
+output
+tmp

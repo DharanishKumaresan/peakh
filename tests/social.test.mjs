@@ -5,7 +5,22 @@ import ts from 'typescript';
 import { makeSeed } from '../app/records.ts';
 const source = (await readFile(new URL('../app/social.ts', import.meta.url), 'utf8')).replace("'./records'", JSON.stringify(new URL('../app/records.ts', import.meta.url).href));
 const js = ts.transpileModule(source, {compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
-const {activityKey,publicRecords,leaderboard} = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
+const {activityKey,publicRecords,leaderboard,leaderboardActivities} = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
+test('leaderboard categories include only real logs from self or friends', () => {
+ const state = makeSeed();
+ assert.deepEqual(leaderboardActivities(state, []), []);
+ state.activities[0].entries.push({id:'real-run',date:'2026-09-01',value:1200});
+ const other = makeSeed();
+ other.activities[1].entries.push({id:'real-bench',date:'2026-09-01',value:90});
+ other.activities.push({id:'custom',name:'Cycling',category:'10 KM',unit:'sec',lower:true,goal:0,entries:[{id:'real-bike',date:'2026-09-01',value:1800}]});
+ const friend = {id:'friend',name:'Friend',records:publicRecords(other)};
+ const visible = leaderboardActivities(state,[friend,friend]);
+ assert.deepEqual(visible.map(a=>a.name),['Running','Bench press','Cycling']);
+ assert.equal(leaderboard(visible[2],{id:'self',name:'Me',records:publicRecords(state)},[friend]).length,1);
+ assert.equal(state.activities.length,5);
+ state.activities[0].entries = [];
+ assert.deepEqual(leaderboardActivities(state,[]),[]);
+});
 test('leaderboards rank real PRs in the right direction and preserve ties',()=>{
  const [run,bench]=makeSeed().activities;
  const person=(id,value,a)=>({id,name:id,records:[{key:activityKey(a),value}]});

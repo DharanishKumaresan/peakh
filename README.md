@@ -1,8 +1,26 @@
 # peakh
 
-A minimal React app for personal activity records. Built with functional components, hooks, Recharts, CSS variables, and a Cloudflare D1 database. The Next-compatible Vinext runtime serves the React app and API.
+A minimal React app for personal activity records. Vercel runs Next.js; Supabase provides email/password authentication, private records, friend sharing, and photo storage. The original Cloudflare/Vinext files remain for reference.
 
-## Local development
+## Vercel / Supabase deployment
+
+```sh
+npm ci
+npm run dev:vercel
+npm run build:vercel
+node tests/supabase-migration.mjs
+vercel --prod
+```
+
+The Next.js development server runs on port 5174. Apply `supabase/migrations/202609230001_peakh.sql` once to a new Supabase project; it was applied to the Peakh project on September 24, 2026. Do not rerun it on that project. The SQL test uses an isolated in-memory PostgreSQL instance and does not modify production data.
+
+The public project URL and publishable key live in `lib/supabase/config.ts` and may be overridden with `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Never use a service-role key in the browser. Supabase Auth must have the production Site URL and its exact `/auth/callback` URL in the redirect allowlist. Email confirmation remains enabled.
+
+The public `/donate` page displays the UPI recipient `dharanishpk1939-1@okhdfcbank`, a QR code, a copy option, and an app-opening link. The current personal UPI ID has a reported GPay intent rejection, including for a ₹1 payment; restoring the link does not resolve that restriction. A supported, verified merchant payment integration is required before treating the direct app flow as working. Supporters can copy the UPI ID into their payment app or scan the QR code from another device. Set `PEAKH_UPI_ID` and `PEAKH_UPI_PAYEE_NAME` to override the recipient ID and displayed name; changing these values alone does not establish merchant verification. UPI payments are made in INR; the app does not handle payment credentials or claim that a payment succeeded.
+
+Records and photos now use Supabase, not the legacy D1/R2 backend described below. Existing Cloudflare records are not automatically transferred. Authentication now uses real Supabase accounts; legacy proxy identity headers are ignored. The tests in `tests/api-smoke.mjs` and `tests/photo-api.mjs` target the old local Cloudflare worker and are not Vercel integration tests.
+
+## Legacy Cloudflare development (reference)
 
 Use Node.js 22.13+.
 

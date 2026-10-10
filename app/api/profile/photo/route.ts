@@ -1,4 +1,4 @@
-import { database, ensureProfile, json, photoStorage, photoUrl, sameOrigin, userId } from '../../storage';
+import { rpc, ensureProfile, json, photoStorage, photoUrl, sameOrigin, userId } from '../../storage';
 
 const maxBytes = 512 * 1024;
 // Only accept the small JPEG produced by the photo editor, never active formats such as SVG.
@@ -17,7 +17,7 @@ function validJpeg(bytes: Uint8Array) {
   return false;
 }
 export async function PUT(request: Request) {
-  const user = userId(request);
+  const user = await userId(request);
   if (!user) return json({ error: 'Please sign in again.' }, 401);
   if (!sameOrigin(request)) return json({ error: 'Request origin is not allowed.' }, 403);
   if (request.headers.get('content-type') !== 'image/jpeg') return json({ error: 'Choose a JPG, PNG or WebP photo using the photo picker.' }, 415);
@@ -35,23 +35,23 @@ export async function PUT(request: Request) {
     const bytes = new Uint8Array(size); let position = 0;
     for (const chunk of chunks) { bytes.set(chunk, position); position += chunk.length; }
     if (!validJpeg(bytes)) return json({ error: 'This photo could not be read. Choose another image.' }, 400);
-    const profile = await ensureProfile(request, user), bucket = photoStorage();
-    const key = 'avatars/' + crypto.randomUUID() + '.jpg';
-    await bucket.put(key, bytes, { httpMetadata: { contentType: 'image/jpeg' } });
-    try { await database().prepare('UPDATE profiles SET photo_key = ? WHERE user_id = ?').bind(key, user).run(); }
+    const profile = await ensureProfile(request, user), bucket = await photoStorage();
+    const key = user + '/' + crypto.randomUUID() + '.jpg';
+    await bucket.put(key, bytes);
+    try { await rpc('photo_set', { key }); }
     catch (e) { await bucket.delete(key).catch(() => {}); throw e; }
     if (profile.photo_key) await bucket.delete(profile.photo_key).catch(e => console.error('Old photo cleanup failed', e));
     return json({ photoUrl: photoUrl(profile.id, key) });
   } catch (e) { console.error('Photo save failed', e); return json({ error: 'Could not save your photo. Please try again.' }, 503); }
 }
 export async function DELETE(request: Request) {
-  const user = userId(request);
+  const user = await userId(request);
   if (!user) return json({ error: 'Please sign in again.' }, 401);
   if (!sameOrigin(request)) return json({ error: 'Request origin is not allowed.' }, 403);
   try {
     const profile = await ensureProfile(request, user);
-    await database().prepare('UPDATE profiles SET photo_key = NULL WHERE user_id = ?').bind(user).run();
-    if (profile.photo_key) await photoStorage().delete(profile.photo_key).catch(e => console.error('Photo cleanup failed', e));
+    await rpc('photo_set', { key: null });
+    if (profile.photo_key) await (await photoStorage()).delete(profile.photo_key).catch(e => console.error('Photo cleanup failed', e));
     return json({ photoUrl: null });
   } catch (e) { console.error('Photo removal failed', e); return json({ error: 'Could not remove your photo. Please try again.' }, 503); }
 }

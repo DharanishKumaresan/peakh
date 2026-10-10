@@ -1,16 +1,12 @@
 import { sharedActivities } from '../../../social';
-import { database, json, userId, photoUrl } from '../../storage';
+import { type RecordState } from '../../../records';
+import { rpc, json, userId, photoUrl } from '../../storage';
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = userId(request);
-  if (!user) return json({ error: 'Please sign in.' }, 401);
-  const { id } = await params;
+  if (!await userId(request)) return json({ error: 'Please sign in.' }, 401);
   try {
-    const row = await database().prepare(`SELECT p.id, p.name, p.photo_key, b.state FROM profiles p
-      LEFT JOIN record_boards b ON b.owner = 'user:' || p.user_id
-      WHERE p.id = ? AND (p.user_id = ? OR EXISTS (SELECT 1 FROM friendships f WHERE f.status = 'accepted'
-        AND ((f.user_a = ? AND f.user_b = p.user_id) OR (f.user_b = ? AND f.user_a = p.user_id))))`)
-      .bind(id, user, user, user).first<{ id: string; name: string; photo_key: string | null; state: string | null }>();
+    const { id } = await params;
+    const row = await rpc<{ id: string; name: string; photo_key: string | null; state: RecordState | null } | null>('friend_get', { id });
     if (!row) return json({ error: 'This profile is available only to accepted friends.' }, 404);
-    return json({ id: row.id, name: row.name, photoUrl: photoUrl(row.id, row.photo_key), activities: row.state ? sharedActivities(JSON.parse(row.state)) : [] });
+    return json({ id: row.id, name: row.name, photoUrl: photoUrl(row.id, row.photo_key), activities: row.state ? sharedActivities(row.state) : [] });
   } catch (e) { console.error('Profile load failed', e); return json({ error: 'Could not load this profile. Please try again.' }, 503); }
 }
